@@ -1,32 +1,25 @@
-name: Build Windows App
-
-on:
-  push:
-    branches: [ main, master ]
-
-jobs:
-  build:
-    runs-on: windows-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 18
-
-    - name: Install Dependencies
-      run: npm install
-
-    - name: Build Electron App
-      run: npx electron-builder --win --x64
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Upload Artifacts (.exe)
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-exe-app
-        path: dist/*.exe
+{
+  "name": "matjari-windows",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.mystore.app",
+    "productName": "MatjariApp",
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "files": [
+      "index.html",
+      "main.js",
+      "**/*"
+    ]
+  }
+}
