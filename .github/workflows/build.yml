@@ -19,9 +19,11 @@ jobs:
 
     - name: Install Dependencies
       run: npm install
+      working-directory: ./matjari-windows   # <--- أضف هذا السطر هنا
 
     - name: Build Electron App
       run: npx electron-builder --win --x64
+      working-directory: ./matjari-windows   # <--- وأضف هذا السطر هنا أيضا
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -29,4 +31,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: windows-exe-app
-        path: dist/*.exe
+        path: "**/dist/*.exe"                # <--- تم تحديث المسار للبحث داخل المجلد الفرعي
