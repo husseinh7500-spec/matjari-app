@@ -10,10 +10,6 @@ jobs:
   build:
     runs-on: windows-latest
 
-    defaults:
-      run:
-        working-directory: StoreX-Windows
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,11 +19,26 @@ jobs:
         with:
           node-version: 20
 
+      - name: Extract StoreX Project
+        shell: pwsh
+        run: |
+          $archive = Get-ChildItem -Path . -Filter "StoreX-Windows-Project*.zip" | Select-Object -First 1
+
+          if (-not $archive) {
+            throw "StoreX project ZIP was not found."
+          }
+
+          Expand-Archive -LiteralPath $archive.FullName -DestinationPath . -Force
+
+          if (-not (Test-Path "StoreX-Windows/package.json")) {
+            throw "package.json was not found after extraction."
+          }
+
       - name: Install Dependencies
-        run: npm install
+        run: npm --prefix StoreX-Windows install
 
       - name: Build StoreX EXE
-        run: npm run build:win
+        run: npm --prefix StoreX-Windows run build:win
 
       - name: Upload Windows Installer
         uses: actions/upload-artifact@v4
