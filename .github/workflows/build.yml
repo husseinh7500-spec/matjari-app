@@ -3,7 +3,9 @@ name: Build StoreX Windows App
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 jobs:
@@ -11,44 +13,90 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # 1. Download repository
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # 3. Extract StoreX project
       - name: Extract StoreX Project
         shell: pwsh
         run: |
-          $zip = Get-ChildItem -Path . -Filter "StoreX-Windows-Project*.zip" -File | Select-Object -First 1
+          $zip = Get-ChildItem -Path "." -Filter "StoreX-Windows-Project*.zip" -File |
+            Select-Object -First 1
 
           if (-not $zip) {
-            throw "StoreX ZIP file not found in repository root."
+            throw "StoreX ZIP file not found."
           }
 
-          Expand-Archive -LiteralPath $zip.FullName -DestinationPath . -Force
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath "." -Force
 
-          Write-Host "Extracted project files:"
-          Get-ChildItem -Path . -Recurse -Filter package.json | Select-Object -ExpandProperty FullName
+          $projectPath = "./StoreX-Windows"
 
-          if (-not (Test-Path "./StoreX-Windows/package.json")) {
-            throw "StoreX-Windows/package.json not found. Check ZIP folder structure."
+          if (-not (Test-Path "$projectPath/package.json")) {
+            throw "package.json not found in StoreX-Windows."
           }
 
+          Write-Host "Project extracted successfully."
+          Get-ChildItem $projectPath
+
+      # 4. Install dependencies
       - name: Install Dependencies
         working-directory: ./StoreX-Windows
         run: npm install
 
+      # 5. Build Windows EXE
       - name: Build StoreX EXE
         working-directory: ./StoreX-Windows
         run: npm run build:win
 
+      # 6. Find EXE and prepare installer folder
+      - name: Find and Prepare EXE
+        shell: pwsh
+        run: |
+          $projectPath = "./StoreX-Windows"
+
+          $files = Get-ChildItem -Path $projectPath -Recurse -Filter "*.exe" -File |
+            Where-Object {
+              $_.FullName -notmatch "node_modules" -and
+              $_.FullName -notmatch "\\.git\\"
+            }
+
+          if (-not $files) {
+            Write-Host "No EXE files found."
+
+            Get-ChildItem $projectPath -Recurse -Directory |
+              Where-Object {
+                $_.FullName -notmatch "node_modules"
+              } |
+              Select-Object -ExpandProperty FullName
+
+            throw "EXE file not found after build."
+          }
+
+          New-Item -ItemType Directory -Force -Path "./installer" |
+            Out-Null
+
+          foreach ($file in $files) {
+            Write-Host "Found EXE: $($file.FullName)"
+
+            Copy-Item -LiteralPath $file.FullName `
+              -Destination "./installer/$($file.Name)" -Force
+          }
+
+          Write-Host "Prepared EXE files:"
+          Get-ChildItem "./installer"
+
+      # 7. Upload installer to GitHub
       - name: Upload Windows Installer
         uses: actions/upload-artifact@v4
         with:
           name: StoreX-Windows-Installer
-          path: StoreX-Windows/release/*.exe
+          path: installer/*.exe
           if-no-files-found: error
           retention-days: 30
