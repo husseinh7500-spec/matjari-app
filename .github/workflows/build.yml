@@ -22,23 +22,28 @@ jobs:
       - name: Extract StoreX Project
         shell: pwsh
         run: |
-          $archive = Get-ChildItem -Path . -Filter "StoreX-Windows-Project*.zip" | Select-Object -First 1
+          $zip = Get-ChildItem -Path . -Filter "StoreX-Windows-Project*.zip" -File | Select-Object -First 1
 
-          if (-not $archive) {
-            throw "StoreX project ZIP was not found."
+          if (-not $zip) {
+            throw "StoreX ZIP file not found in repository root."
           }
 
-          Expand-Archive -LiteralPath $archive.FullName -DestinationPath . -Force
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath . -Force
 
-          if (-not (Test-Path "StoreX-Windows/package.json")) {
-            throw "package.json was not found after extraction."
+          Write-Host "Extracted project files:"
+          Get-ChildItem -Path . -Recurse -Filter package.json | Select-Object -ExpandProperty FullName
+
+          if (-not (Test-Path "./StoreX-Windows/package.json")) {
+            throw "StoreX-Windows/package.json not found. Check ZIP folder structure."
           }
 
       - name: Install Dependencies
-        run: npm --prefix StoreX-Windows install
+        working-directory: ./StoreX-Windows
+        run: npm install
 
       - name: Build StoreX EXE
-        run: npm --prefix StoreX-Windows run build:win
+        working-directory: ./StoreX-Windows
+        run: npm run build:win
 
       - name: Upload Windows Installer
         uses: actions/upload-artifact@v4
